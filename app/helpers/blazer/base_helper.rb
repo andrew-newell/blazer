@@ -55,12 +55,16 @@ module Blazer
     end
 
     def vis_timeline(chart_id, rows)
-      values = rows.map.with_index(1) { |array, index| { id: index, content: array[0], start: array[1], end: array[2] } }
-      groups = if rows.first[3].present?
-                 rows.map { |array| array[3] }.uniq.map { |group_name| { id: group_name, content: group_name } }
-               end
-      if groups
-        return <<~JS
+      if rows.first[3].present?
+        values = rows.map.with_index(1) { |array, index| { id: index, content: array[0], start: array[1], end: array[2], group: array[3] } }
+        groups = rows.map { |array| array[3] }.uniq.map { |group_name| { id: group_name, content: group_name } }
+      else
+        values = rows.map.with_index(1) { |array, index| { id: index, content: array[0], start: array[1], end: array[2] } }
+        groups = []
+      end
+
+      if groups.empty?
+        return <<~HTML
           <div id="visualization_#{chart_id}"></div>
 
           <script type="text/javascript">
@@ -69,18 +73,17 @@ module Blazer
 
               // Create a DataSet (allows two way data-binding)
               var items = new vis.DataSet(JSON.parse('#{values.to_json}'));
-              var groups = new vis.DataSet(JSON.parse('#{groups.to_json}'));
 
               // Configuration for the Timeline
               var options = {};
 
               // Create a Timeline
-              new vis.Timeline(container, items, groups, options);
+              new vis.Timeline(container, items, options);
           </script>
-        JS
+        HTML
       end
 
-      <<~JS
+      <<~HTML
         <div id="visualization_#{chart_id}"></div>
 
         <script type="text/javascript">
@@ -89,14 +92,15 @@ module Blazer
 
             // Create a DataSet (allows two way data-binding)
             var items = new vis.DataSet(JSON.parse('#{values.to_json}'));
+            var groups = new vis.DataSet(JSON.parse('#{groups.to_json}'));
 
             // Configuration for the Timeline
             var options = {};
 
             // Create a Timeline
-            new vis.Timeline(container, items, options);
+            new vis.Timeline(container, items, groups, options);
         </script>
-      JS
+      HTML
     end
   end
 end
