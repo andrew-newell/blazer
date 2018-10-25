@@ -75,7 +75,7 @@ module Blazer
               var options = {};
 
               // Create a Timeline
-              new vis.Timeline(container, items, groups options);
+              new vis.Timeline(container, items, groups, options);
           </script>
         JS
       end
