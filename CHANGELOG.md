@@ -1,3 +1,26 @@
+## 2.2.1
+
+- Added support for Sprockets 4
+- Improved Snowflake table preview
+- Fixed bug with refresh link not showing
+
+## 2.2.0
+
+- Added schema to table preview for Postgres and Redshift
+- Fixed bug with Slack notifications not sending
+- Dropped support for Rails 4.2
+
+## 2.1.0
+
+- Require latest Chartkick to prevent possible XSS - see [#245](https://github.com/ankane/blazer/issues/245)
+
+## 2.0.2
+
+- Added support for variable transformation for blind indexing
+- Added experimental support for Neo4j
+- Added experimental support for Salesforce
+- Fixed JavaScript sorting for numbers with commas
+
 ## 2.0.1
 
 - Added favicon

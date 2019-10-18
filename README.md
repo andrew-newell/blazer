@@ -175,6 +175,19 @@ Also, make sure authorization is enabled when you start the server.
 
 If your database contains sensitive or personal data, check out [Hypershield](https://github.com/ankane/hypershield) to shield it.
 
+## Encrypted Data
+
+If you need to search encrypted data, use [blind indexing](https://github.com/ankane/blind_index).
+
+You can have Blazer transform specific variables with:
+
+```ruby
+Blazer.transform_variable = lambda do |name, value|
+  value = User.compute_email_bidx(value) if name == "email_bidx"
+  value
+end
+```
+
 ## Queries
 
 ### Variables
@@ -462,9 +475,11 @@ data_sources:
 - [IBM DB2 and Informix](#ibm-db2-and-informix)
 - [MongoDB](#mongodb-1)
 - [MySQL](#mysql-1)
+- [Neo4j](#neo4j-experimental)
 - [Oracle](#oracle)
 - [PostgreSQL](#postgresql-1)
 - [Presto](#presto)
+- [Salesforce](#salesforce-experimental)
 - [Snowflake](#snowflake)
 - [SQLite](#sqlite)
 - [SQL Server](#sql-server)
@@ -524,9 +539,7 @@ data_sources:
 
 ### Druid
 
-First, [enable SQL support](http://druid.io/docs/latest/querying/sql.html#configuration) on the broker.
-
-Set:
+Enable [SQL support](http://druid.io/docs/latest/querying/sql.html#configuration) on the broker and set:
 
 ```yml
 data_sources:
@@ -582,6 +595,17 @@ data_sources:
     url: mysql2://user:password@hostname:3306/database
 ```
 
+### Neo4j [experimental]
+
+Add [neo4j-core](https://github.com/neo4jrb/neo4j-core) to your Gemfile and set:
+
+```yml
+data_sources:
+  my_source:
+    adapter: neo4j
+    url: http://user:password@hostname:7474
+```
+
 ### Oracle
 
 Use [activerecord-oracle_enhanced-adapter](https://github.com/rsim/oracle-enhanced).
@@ -606,15 +630,59 @@ data_sources:
     url: presto://user@hostname:8080/catalog
 ```
 
+### Salesforce [experimental]
+
+Add [restforce](https://github.com/restforce/restforce) to your Gemfile and set:
+
+```yml
+data_sources:
+  my_source:
+    adapter: salesforce
+```
+
+And set the appropriate environment variables:
+
+```sh
+SALESFORCE_USERNAME="username"
+SALESFORCE_PASSWORD="password"
+SALESFORCE_SECURITY_TOKEN="security token"
+SALESFORCE_CLIENT_ID="client id"
+SALESFORCE_CLIENT_SECRET="client secret"
+SALESFORCE_API_VERSION="41.0"
+```
+
+Supports [SOQL](https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql.htm)
+
 ### Snowflake
 
-First, install the [ODBC driver](https://docs.snowflake.net/manuals/user-guide/odbc.html). Add [odbc_adapter](https://github.com/localytics/odbc_adapter) to your Gemfile and set:
+First, install ODBC. For Homebrew, use:
+
+```sh
+brew install unixodbc
+```
+
+For Ubuntu, use:
+
+```sh
+sudo apt-get install unixodbc-dev
+```
+
+For Heroku, use the [Apt buildpack](https://github.com/heroku/heroku-buildpack-apt) and create an `Aptfile` with:
+
+```text
+unixodbc-dev
+https://sfc-repo.snowflakecomputing.com/odbc/linux/2.19.16/snowflake-odbc-2.19.16.x86_64.deb
+```
+
+> This installs the driver at `/app/.apt/usr/lib/snowflake/odbc/lib/libSnowflake.so`
+
+Then, download the [Snowflake ODBC driver](https://docs.snowflake.net/manuals/user-guide/odbc-download.html). Add [odbc_adapter](https://github.com/localytics/odbc_adapter) to your Gemfile and set:
 
 ```yml
 data_sources:
   my_source:
     adapter: snowflake
-    dsn: ProductionSnowflake
+    conn_str: Driver=/path/to/libSnowflake.so;uid=user;pwd=password;server=host.snowflakecomputing.com
 ```
 
 ### SQLite
@@ -670,12 +738,12 @@ Blazer supports a basic permissions model.
 
 Have team members who want to learn SQL? Here are a few great, free resources.
 
-- [Khan Academy](https://www.khanacademy.org/computing/computer-programming/sql)
-- [Codecademy](https://www.codecademy.com/learn/learn-sql)
+- [The Data School](https://dataschool.com/learn-sql/)
+- [SQLBolt](https://sqlbolt.com/)
 
 ## Useful Tools
 
-For an easy way to group by day, week, month, and more with correct time zones, check out [Groupdate](https://github.com/ankane/groupdate.sql).
+For an easy way to group by day, week, month, and more with correct time zones, check out [Groupdate.sql](https://github.com/ankane/groupdate.sql).
 
 ## Standalone Version
 

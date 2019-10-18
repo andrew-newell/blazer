@@ -12,14 +12,14 @@
       <p class="text-muted" style="float: right;">
         <% if @cached_at %>
           Cached <%= time_ago_in_words(@cached_at, include_seconds: true) %> ago
-        <% elsif !params[:data_source] %>
+        <% elsif params[:query_id] %>
           Cached just now
           <% if @data_source.cache_mode == "slow" %>
             (over <%= "%g" % @data_source.cache_slow_threshold %>s)
           <% end %>
         <% end %>
 
-        <% if @query && !params[:data_source] %>
+        <% if @query && params[:query_id] %>
           <%= link_to "Refresh", refresh_query_path(@query, variable_params), method: :post %>
         <% end %>
       </p>
@@ -67,7 +67,8 @@
     <% series_library = {} %>
     <% target_index = @columns.index { |k| k.downcase == "target" } %>
     <% if target_index %>
-      <% series_library[target_index - 1] = {pointStyle: "line", hitRadius: 5, borderColor: "#109618", pointBackgroundColor: "#109618", backgroundColor: "#109618"} %>
+      <% color = "#109618" %>
+      <% series_library[target_index - 1] = {pointStyle: "line", hitRadius: 5, borderColor: color, pointBackgroundColor: color, backgroundColor: color, pointHoverBackgroundColor: color} %>
     <% end %>
     <% if @forecast %>
       <% color = "#54a3ee" %>
@@ -76,9 +77,10 @@
     <% if blazer_maps? && @markers.any? %>
       <div id="map" style="height: <%= @only_chart ? 300 : 500 %>px;"></div>
       <script>
-        L.mapbox.accessToken = '<%= ENV["MAPBOX_ACCESS_TOKEN"] %>';
-        var map = L.mapbox.map('map', 'ankane.ioo8nki0');
+        <%= blazer_js_var "mapboxAccessToken", Blazer.mapbox_access_token %>
         <%= blazer_js_var "markers", @markers %>
+        L.mapbox.accessToken = mapboxAccessToken;
+        var map = L.mapbox.map('map', 'ankane.ioo8nki0');
         var featureLayer = L.mapbox.featureLayer().addTo(map);
         var geojson = [];
         for (var i = 0; i < markers.length; i++) {
