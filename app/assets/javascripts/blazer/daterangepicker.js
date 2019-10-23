@@ -46,7 +46,7 @@
         this.showCustomRangeLabel = true;
         this.timePicker = true;
         this.timePicker24Hour = true;
-        this.timePickerIncrement = 15;
+        this.timePickerIncrement = 1;
         this.timePickerSeconds = false;
         this.linkedCalendars = true;
         this.autoUpdateInput = true;
@@ -67,7 +67,7 @@
 
         this.locale = {
             direction: 'ltr',
-            format: moment.localeData().longDateFormat('LLL'),
+            format: moment.localeData().longDateFormat('L'),
             separator: ' - ',
             applyLabel: 'Apply',
             cancelLabel: 'Cancel',

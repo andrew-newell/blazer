@@ -46,13 +46,13 @@
             })
             // hack to start with empty date
             datePicker.on("apply.daterangepicker", function(ev, picker) {
-              datePicker.find("span").html(toDate(picker.startDate).format("MMMM D, YYYY"))
+              datePicker.find("span").html(toDate(picker.startDate).format("MMMM D, YYYY HH:mm"))
               input.val(toDate(picker.startDate).utc().format())
               submitIfCompleted($("#<%= var %>").closest("form"))
             })
             if (input.val().length > 0) {
               var picker = datePicker.data("daterangepicker")
-              datePicker.find("span").html(toDate(picker.startDate).format("MMMM D, YYYY"))
+              datePicker.find("span").html(toDate(picker.startDate).format("MMMM D, YYYY HH:mm"))
             }
           })()
         </script>
@@ -80,7 +80,7 @@
 
         function setTimeInputs(start, end) {
           $("#start_time").val(toDate(start).utc().format())
-          $("#end_time").val(toDate(end).endOf("day").utc().format())
+          $("#end_time").val(toDate(end).utc().format())
         }
 
         $("#reportrange").daterangepicker(
@@ -103,7 +103,7 @@
           }
         ).on("apply.daterangepicker", function(ev, picker) {
           setTimeInputs(picker.startDate, picker.endDate)
-          $("#reportrange span").html(toDate(picker.startDate).format("MMMM D, YYYY") + " - " + toDate(picker.endDate).format("MMMM D, YYYY"))
+          $("#reportrange span").html(toDate(picker.startDate).format("MMMM D, YYYY HH:mm") + " - " + toDate(picker.endDate).format("MMMM D, YYYY HH:mm"))
         })
 
         if ($("#start_time").val().length > 0) {
