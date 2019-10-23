@@ -46,7 +46,7 @@
         this.showCustomRangeLabel = true;
         this.timePicker = true;
         this.timePicker24Hour = true;
-        this.timePickerIncrement = 1;
+        this.timePickerIncrement = 15;
         this.timePickerSeconds = false;
         this.linkedCalendars = true;
         this.autoUpdateInput = true;
