@@ -103,7 +103,7 @@
           }
         ).on("apply.daterangepicker", function(ev, picker) {
           setTimeInputs(picker.startDate, picker.endDate)
-          $("#reportrange span").html(toDate(picker.startDate).format("MMMM D, YYYY HH:mm") + " - " + toDate(picker.endDate).format("MMMM D, YYYY HH:mm"))
+          $("#reportrange span").html(toDate(picker.startDate).format("YY/MM/DD HH:mm") + " - " + toDate(picker.endDate).format("YY/MM/DD HH:mm"))
         })
 
         if ($("#start_time").val().length > 0) {
