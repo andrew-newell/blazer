@@ -33,8 +33,8 @@
         //default settings for options
         this.parentEl = 'body';
         this.element = $(element);
-        this.startDate = moment().startOf('day');
-        this.endDate = moment().endOf('day');
+        this.startDate = moment().startOf('hour');
+        this.endDate = moment().endOf('hour');
         this.minDate = false;
         this.maxDate = false;
         this.dateLimit = false;
