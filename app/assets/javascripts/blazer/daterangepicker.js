@@ -36,7 +36,7 @@
         this.startDate = moment().startOf('day');
         this.endDate = moment().endOf('day');
         this.minDate = false;
-        this.maxDate = moment();
+        this.maxDate = moment().utc();
         this.dateLimit = false;
         this.autoApply = false;
         this.singleDatePicker = false;
