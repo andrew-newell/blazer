@@ -4,9 +4,9 @@ Explore your data with SQL. Easily create charts and dashboards, and share them 
 
 [Try it out](https://blazer.dokkuapp.com)
 
-[![Screenshot](https://blazer.dokkuapp.com/assets/screenshot-6ca3115a518b488026e48be83ba0d4c9.png)](https://blazer.dokkuapp.com)
+[![Screenshot](https://blazer.dokkuapp.com/assets/blazer-a10baa40fef1ca2f5bb25fc97bcf261a6a54192fb1ad0f893c0f562b8c7c4697.png)](https://blazer.dokkuapp.com)
 
-Blazer 2.0 was recently released! See [instructions for upgrading](#20).
+Blazer is also available as a [Docker image](https://github.com/ankane/blazer-docker).
 
 :tangerine: Battle-tested at [Instacart](https://www.instacart.com/opensource)
 
@@ -25,6 +25,12 @@ Blazer 2.0 was recently released! See [instructions for upgrading](#20).
 - [Charts](#charts)
 - [Dashboards](#dashboards)
 - [Checks](#checks)
+- [Cohorts](#cohorts)
+- [Anomaly Detection](#anomaly-detection)
+- [Forecasting](#forecasting)
+- [Uploads](#uploads)
+- [Data Sources](#data-sources)
+- [Query Permissions](#query-permissions)
 
 ## Installation
 
@@ -183,7 +189,7 @@ You can have Blazer transform specific variables with:
 
 ```ruby
 Blazer.transform_variable = lambda do |name, value|
-  value = User.compute_email_bidx(value) if name == "email_bidx"
+  value = User.generate_email_bidx(value) if name == "email_bidx"
   value
 end
 ```
@@ -383,13 +389,38 @@ SELECT * FROM ratings WHERE user_id IS NULL /* all ratings should have a user */
 
 Then create check with optional emails if you want to be notified. Emails are sent when a check starts failing, and when it starts passing again.
 
+## Cohorts
+
+Create a cohort analysis from a simple SQL query. [Example](https://blazer.dokkuapp.com/queries/19-cohort-analysis-from-first-order)
+
+Create a query with the comment `/* cohort analysis */`. The result should have columns named `user_id` and `conversion_time` and optionally `cohort_time`.
+
+You can generate cohorts from the first conversion time:
+
+```sql
+/* cohort analysis */
+SELECT user_id, created_at AS conversion_time FROM orders
+```
+
+(the first conversion isn’t counted in the first time period with this format)
+
+Or from another time, like sign up:
+
+```sql
+/* cohort analysis */
+SELECT users.id AS user_id, orders.created_at AS conversion_time, users.created_at AS cohort_time
+FROM users LEFT JOIN orders ON orders.user_id = users.id
+```
+
+This feature requires PostgreSQL.
+
 ## Anomaly Detection
 
 Blazer supports two different approaches to anomaly detection.
 
 ### Trend
 
-[Trend](https://trendapi.org/) is easiest to set up but uses an external service.
+[Trend](https://trendapi.org/) is easiest to set up. By default, it uses an external service, but you can run it on your own infrastructure as well.
 
 Add [trend](https://github.com/ankane/trend) to your Gemfile:
 
@@ -401,6 +432,12 @@ And add to `config/blazer.yml`:
 
 ```yml
 anomaly_checks: trend
+```
+
+For the [self-hosted API](https://github.com/ankane/trend-api), create an initializer with:
+
+```ruby
+Trend.url = "http://localhost:8000"
 ```
 
 ### R
@@ -422,13 +459,50 @@ anomaly_checks: r
 
 If upgrading from version 1.4 or below, also follow the [upgrade instructions](#15).
 
-If you’re on Heroku, follow [these additional instructions](#anomaly-detection-on-heroku).
+If you’re on Heroku, follow the additional instructions below.
+
+### R on Heroku
+
+Add the [R buildpack](https://github.com/virtualstaticvoid/heroku-buildpack-r) to your app.
+
+```sh
+heroku buildpacks:add --index 1 https://github.com/virtualstaticvoid/heroku-buildpack-r.git
+```
+
+And create an `init.R` with:
+
+```r
+if (!"AnomalyDetection" %in% installed.packages()) {
+  install.packages("remotes")
+  remotes::install_github("twitter/AnomalyDetection")
+}
+```
+
+Commit and deploy away. The first deploy may take a few minutes.
 
 ## Forecasting
 
-Blazer has experimental support for forecasting through [Trend](https://trendapi.org/).
+Blazer supports for two different forecasting methods. [Example](https://blazer.dokkuapp.com/queries/18-forecast?forecast=t)
 
-[Example](https://blazer.dokkuapp.com/queries/18-forecast?forecast=t)
+A forecast link will appear for queries that return 2 columns with types timestamp and numeric.
+
+### Prophet
+
+Add [prophet](https://github.com/ankane/prophet) to your Gemfile:
+
+```ruby
+gem 'prophet-rb', '>= 0.2.1'
+```
+
+And add to `config/blazer.yml`:
+
+```yml
+forecasting: prophet
+```
+
+### Trend
+
+[Trend](https://trendapi.org/) uses an external service.
 
 Add [trend](https://github.com/ankane/trend) to your Gemfile:
 
@@ -442,7 +516,31 @@ And add to `config/blazer.yml`:
 forecasting: trend
 ```
 
-A forecast link will appear for queries that return 2 columns with types timestamp and numeric.
+## Uploads
+
+Creating database tables from CSV files. [Example](https://blazer.dokkuapp.com/uploads)
+
+Run:
+
+```sh
+rails generate blazer:uploads
+rails db:migrate
+```
+
+And add to `config/blazer.yml`:
+
+```yml
+uploads:
+  url: postgres://...
+  schema: uploads
+  data_source: main
+```
+
+This feature requires PostgreSQL. Create a new schema just for uploads.
+
+```sql
+CREATE SCHEMA uploads;
+```
 
 ## Data Sources
 
@@ -468,18 +566,22 @@ data_sources:
 - [Amazon Athena](#amazon-athena)
 - [Amazon Redshift](#amazon-redshift)
 - [Apache Drill](#apache-drill)
+- [Apache Hive](#apache-hive) [master]
+- [Apache Spark](#apache-spark) [master]
 - [Cassandra](#cassandra)
 - [Druid](#druid)
 - [Elasticsearch](#elasticsearch)
 - [Google BigQuery](#google-bigquery)
 - [IBM DB2 and Informix](#ibm-db2-and-informix)
+- [InfluxDB](#influxdb)
 - [MongoDB](#mongodb-1)
 - [MySQL](#mysql-1)
-- [Neo4j](#neo4j-experimental)
+- [Neo4j](#neo4j)
 - [Oracle](#oracle)
 - [PostgreSQL](#postgresql-1)
 - [Presto](#presto)
-- [Salesforce](#salesforce-experimental)
+- [Salesforce](#salesforce)
+- [Socrata Open Data API (SODA)](#socrata-open-data-api-soda)
 - [Snowflake](#snowflake)
 - [SQLite](#sqlite)
 - [SQL Server](#sql-server)
@@ -508,7 +610,7 @@ data_sources:
 
 ### Amazon Redshift
 
-Add [activerecord4-redshift-adapter](https://github.com/aamine/activerecord4-redshift-adapter) or [activerecord5-redshift-adapter](https://github.com/ConsultingMD/activerecord5-redshift-adapter) to your Gemfile and set:
+Add [activerecord6-redshift-adapter](https://github.com/kwent/activerecord6-redshift-adapter) or [activerecord5-redshift-adapter](https://github.com/ConsultingMD/activerecord5-redshift-adapter) to your Gemfile and set:
 
 ```yml
 data_sources:
@@ -526,6 +628,32 @@ data_sources:
     adapter: drill
     url: http://hostname:8047
 ```
+
+### Apache Hive
+
+Add [hexspace](https://github.com/ankane/hexspace) to your Gemfile and set:
+
+```yml
+data_sources:
+  my_source:
+    adapter: hive
+    url: sasl://user:password@hostname:10000/database
+```
+
+Use a read-only user. Requires [HiveServer2](https://cwiki.apache.org/confluence/display/Hive/Setting+Up+HiveServer2).
+
+### Apache Spark
+
+Add [hexspace](https://github.com/ankane/hexspace) to your Gemfile and set:
+
+```yml
+data_sources:
+  my_source:
+    adapter: spark
+    url: sasl://user:password@hostname:10000/database
+```
+
+Use a read-only user. Requires the [Thrift server](https://spark.apache.org/docs/latest/sql-distributed-sql-engine.html).
 
 ### Cassandra
 
@@ -573,7 +701,26 @@ data_sources:
 
 ### IBM DB2 and Informix
 
-Use [ibm_db](https://github.com/ibmdb/ruby-ibmdb).
+Add [ibm_db](https://github.com/ibmdb/ruby-ibmdb) to your Gemfile and set:
+
+```yml
+data_sources:
+  my_source:
+    url: ibm-db://user:password@hostname:50000/database
+```
+
+### InfluxDB
+
+Add [influxdb](https://github.com/influxdata/influxdb-ruby) to your Gemfile and set:
+
+```yml
+data_sources:
+  my_source:
+    adapter: influxdb
+    url: http://user:password@hostname:8086/database
+```
+
+Supports [InfluxQL](https://docs.influxdata.com/influxdb/v1.8/query_language/explore-data/)
 
 ### MongoDB
 
@@ -595,7 +742,7 @@ data_sources:
     url: mysql2://user:password@hostname:3306/database
 ```
 
-### Neo4j [experimental]
+### Neo4j
 
 Add [neo4j-core](https://github.com/neo4jrb/neo4j-core) to your Gemfile and set:
 
@@ -608,11 +755,17 @@ data_sources:
 
 ### Oracle
 
-Use [activerecord-oracle_enhanced-adapter](https://github.com/rsim/oracle-enhanced).
+Add [activerecord-oracle_enhanced-adapter](https://github.com/rsim/oracle-enhanced) and [ruby-oci8](https://github.com/kubo/ruby-oci8) to your Gemfile and set:
+
+```yml
+data_sources:
+  my_source:
+    url: oracle-enhanced://user:password@hostname:1521/database
+```
 
 ### PostgreSQL
 
-Add [pg](https://bitbucket.org/ged/ruby-pg/wiki/Home) to your Gemfile (if it’s not there) and set:
+Add [pg](https://github.com/ged/ruby-pg) to your Gemfile (if it’s not there) and set:
 
 ```yml
 data_sources:
@@ -630,7 +783,7 @@ data_sources:
     url: presto://user@hostname:8080/catalog
 ```
 
-### Salesforce [experimental]
+### Salesforce
 
 Add [restforce](https://github.com/restforce/restforce) to your Gemfile and set:
 
@@ -653,6 +806,20 @@ SALESFORCE_API_VERSION="41.0"
 
 Supports [SOQL](https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql.htm)
 
+### Socrata Open Data API (SODA)
+
+Set:
+
+```yml
+data_sources:
+  my_source:
+    adapter: soda
+    url: https://soda.demo.socrata.com/resource/4tka-6guv.json
+    app_token: ...
+```
+
+Supports [SoQL](https://dev.socrata.com/docs/functions/)
+
 ### Snowflake
 
 First, install ODBC. For Homebrew, use:
@@ -671,7 +838,7 @@ For Heroku, use the [Apt buildpack](https://github.com/heroku/heroku-buildpack-a
 
 ```text
 unixodbc-dev
-https://sfc-repo.snowflakecomputing.com/odbc/linux/2.19.16/snowflake-odbc-2.19.16.x86_64.deb
+https://sfc-repo.snowflakecomputing.com/odbc/linux/2.21.5/snowflake-odbc-2.21.5.x86_64.deb
 ```
 
 > This installs the driver at `/app/.apt/usr/lib/snowflake/odbc/lib/libSnowflake.so`
@@ -763,24 +930,13 @@ async: true
 config.cache_store = :mem_cache_store
 ```
 
-## Anomaly Detection on Heroku
+## Archiving
 
-Add the [R buildpack](https://github.com/virtualstaticvoid/heroku-buildpack-r) to your app.
-
-```sh
-heroku buildpacks:add --index 1 https://github.com/virtualstaticvoid/heroku-buildpack-r.git\#cedar-14
-```
-
-And create an `init.r` with:
+Archive queries that haven’t been viewed in over 90 days.
 
 ```sh
-if (!"AnomalyDetection" %in% installed.packages()) {
-  install.packages("devtools")
-  devtools::install_github("twitter/AnomalyDetection")
-}
+rake blazer:archive_queries
 ```
-
-Commit and deploy away. The first deploy may take a few minutes.
 
 ## Content Security Policy
 
@@ -791,6 +947,21 @@ override_csp: true
 ```
 
 ## Upgrading
+
+### 2.3
+
+To archive queries, create a migration
+
+```sh
+rails g migration add_status_to_blazer_queries
+```
+
+with:
+
+```ruby
+add_column :blazer_queries, :status, :string
+Blazer::Query.update_all(status: "active")
+```
 
 ### 2.0
 
@@ -804,152 +975,6 @@ with:
 
 ```ruby
 add_column :blazer_checks, :slack_channels, :text
-```
-
-### 1.5
-
-To take advantage of the anomaly detection, create a migration
-
-```sh
-rails g migration upgrade_blazer_to_1_5
-```
-
-with:
-
-```ruby
-add_column :blazer_checks, :check_type, :string
-add_column :blazer_checks, :message, :text
-commit_db_transaction
-
-Blazer::Check.reset_column_information
-
-Blazer::Check.where(invert: true).update_all(check_type: "missing_data")
-Blazer::Check.where(check_type: nil).update_all(check_type: "bad_data")
-```
-
-### 1.3
-
-To take advantage of the latest features, create a migration
-
-```sh
-rails g migration upgrade_blazer_to_1_3
-```
-
-with:
-
-```ruby
-add_column :blazer_dashboards, :creator_id, :integer
-add_column :blazer_checks, :creator_id, :integer
-add_column :blazer_checks, :invert, :boolean
-add_column :blazer_checks, :schedule, :string
-add_column :blazer_checks, :last_run_at, :timestamp
-commit_db_transaction
-
-Blazer::Check.update_all schedule: "1 hour"
-```
-
-### 1.0
-
-Blazer 1.0 brings a number of new features:
-
-- multiple data sources, including Redshift
-- dashboards
-- checks
-
-To upgrade, run:
-
-```sh
-bundle update blazer
-```
-
-Create a migration
-
-```sh
-rails g migration upgrade_blazer_to_1_0
-```
-
-with:
-
-```ruby
-add_column :blazer_queries, :data_source, :string
-add_column :blazer_audits, :data_source, :string
-
-create_table :blazer_dashboards do |t|
-  t.text :name
-  t.timestamps
-end
-
-create_table :blazer_dashboard_queries do |t|
-  t.references :dashboard
-  t.references :query
-  t.integer :position
-  t.timestamps
-end
-
-create_table :blazer_checks do |t|
-  t.references :query
-  t.string :state
-  t.text :emails
-  t.timestamps
-end
-```
-
-And run:
-
-```sh
-rails db:migrate
-```
-
-Update `config/blazer.yml` with:
-
-```yml
-# see https://github.com/ankane/blazer for more info
-
-data_sources:
-  main:
-    url: <%= ENV["BLAZER_DATABASE_URL"] %>
-
-    # statement timeout, in seconds
-    # applies to PostgreSQL only
-    # none by default
-    # timeout: 15
-
-    # time to cache results, in minutes
-    # can greatly improve speed
-    # none by default
-    # cache: 60
-
-    # wrap queries in a transaction for safety
-    # not necessary if you use a read-only user
-    # true by default
-    # use_transaction: false
-
-    smart_variables:
-      # zone_id: "SELECT id, name FROM zones ORDER BY name ASC"
-
-    linked_columns:
-      # user_id: "/admin/users/{value}"
-
-    smart_columns:
-      # user_id: "SELECT id, name FROM users WHERE id IN {value}"
-
-# create audits
-audit: true
-
-# change the time zone
-# time_zone: "Pacific Time (US & Canada)"
-
-# class name of the user model
-# user_class: User
-
-# method name for the current user
-# user_method: current_user
-
-# method name for the display name
-# user_name: name
-
-# email to send checks from
-# from_email: blazer@example.org
 ```
 
 ## History

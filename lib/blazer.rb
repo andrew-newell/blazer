@@ -18,10 +18,14 @@ require "blazer/adapters/cassandra_adapter"
 require "blazer/adapters/drill_adapter"
 require "blazer/adapters/druid_adapter"
 require "blazer/adapters/elasticsearch_adapter"
+require "blazer/adapters/hive_adapter"
+require "blazer/adapters/influxdb_adapter"
 require "blazer/adapters/mongodb_adapter"
 require "blazer/adapters/neo4j_adapter"
 require "blazer/adapters/presto_adapter"
 require "blazer/adapters/salesforce_adapter"
+require "blazer/adapters/soda_adapter"
+require "blazer/adapters/spark_adapter"
 require "blazer/adapters/sql_adapter"
 require "blazer/adapters/snowflake_adapter"
 
@@ -30,6 +34,7 @@ require "blazer/engine"
 
 module Blazer
   class Error < StandardError; end
+  class UploadError < Error; end
   class TimeoutNotSupported < Error; end
 
   class << self
@@ -118,7 +123,7 @@ module Blazer
   def self.extract_vars(statement)
     # strip commented out lines
     # and regex {1} or {1,2}
-    statement.gsub(/\-\-.+/, "").gsub(/\/\*.+\*\//m, "").scan(/\{\w*?\}/i).map { |v| v[1...-1] }.reject { |v| /\A\d+(\,\d+)?\z/.match(v) || v.empty? }.uniq
+    statement.to_s.gsub(/\-\-.+/, "").gsub(/\/\*.+\*\//m, "").scan(/\{\w*?\}/i).map { |v| v[1...-1] }.reject { |v| /\A\d+(\,\d+)?\z/.match(v) || v.empty? }.uniq
   end
 
   def self.run_checks(schedule: nil)
@@ -204,6 +209,23 @@ module Blazer
     slack_webhook_url.present?
   end
 
+  def self.uploads?
+    settings.key?("uploads")
+  end
+
+  def self.uploads_connection
+    raise "Empty url for uploads" unless settings.dig("uploads", "url")
+    Blazer::UploadsConnection.connection
+  end
+
+  def self.uploads_schema
+    settings.dig("uploads", "schema") || "uploads"
+  end
+
+  def self.uploads_table_name(name)
+    uploads_connection.quote_table_name("#{uploads_schema}.#{name}")
+  end
+
   def self.adapters
     @adapters ||= {}
   end
@@ -219,9 +241,13 @@ Blazer.register_adapter "cassandra", Blazer::Adapters::CassandraAdapter
 Blazer.register_adapter "drill", Blazer::Adapters::DrillAdapter
 Blazer.register_adapter "druid", Blazer::Adapters::DruidAdapter
 Blazer.register_adapter "elasticsearch", Blazer::Adapters::ElasticsearchAdapter
+Blazer.register_adapter "hive", Blazer::Adapters::HiveAdapter
+Blazer.register_adapter "influxdb", Blazer::Adapters::InfluxdbAdapter
 Blazer.register_adapter "neo4j", Blazer::Adapters::Neo4jAdapter
 Blazer.register_adapter "presto", Blazer::Adapters::PrestoAdapter
 Blazer.register_adapter "mongodb", Blazer::Adapters::MongodbAdapter
 Blazer.register_adapter "salesforce", Blazer::Adapters::SalesforceAdapter
+Blazer.register_adapter "soda", Blazer::Adapters::SodaAdapter
+Blazer.register_adapter "spark", Blazer::Adapters::SparkAdapter
 Blazer.register_adapter "sql", Blazer::Adapters::SqlAdapter
 Blazer.register_adapter "snowflake", Blazer::Adapters::SnowflakeAdapter

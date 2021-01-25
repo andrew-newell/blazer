@@ -85,11 +85,26 @@ module Blazer
       @forecastable ||= Blazer.forecasting && column_types == ["time", "numeric"] && @rows.size >= 10
     end
 
+    # TODO cache it?
+    # don't want to put result data (even hashed version)
+    # into cache without developer opt-in
     def forecast
-      # TODO cache it?
-      # don't want to put result data (even hashed version)
-      # into cache without developer opt-in
-      forecast = Trend.forecast(Hash[@rows], count: 30)
+      count = (@rows.size * 0.25).round.clamp(30, 365)
+
+      case Blazer.forecasting
+      when "prophet"
+        require "prophet"
+        forecast = Prophet.forecast(@rows.to_h, count: count)
+      else
+        require "trend"
+        forecast = Trend.forecast(@rows.to_h, count: count)
+      end
+
+      # round integers
+      if @rows[0][1].is_a?(Integer)
+        forecast = forecast.map { |k, v| [k, v.round] }.to_h
+      end
+
       @rows.each do |row|
         row[2] = nil
       end
